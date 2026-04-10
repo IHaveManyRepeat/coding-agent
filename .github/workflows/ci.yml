@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches:
-      - master
+      - master #代码 推送到 master 分支
     tags:
       - v*
   pull_request:
@@ -46,13 +46,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       # - name: Install Protoc
       #   uses: arduino/setup-protoc@v2
-      - name: Check code format
+      - name: Check code format # Fmt（格式化）
         run: cargo fmt --all -- --check
-      - name: Check the package for errors
+      - name: Check the package for errors # Build（编译）
         run: cargo check --all
-      - name: Lint rust sources
+      - name: Lint rust sources # Lint（规范检查）
         run: cargo clippy --all-targets --all-features --tests --benches -- -D warnings
-      - name: Execute rust tests
+      - name: Execute rust tests # Test（测试）
         run: cargo nextest run --all-features
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v4
