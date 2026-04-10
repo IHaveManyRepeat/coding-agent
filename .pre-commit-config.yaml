@@ -11,53 +11,105 @@ repos:
       - id: check-merge-conflict
       - id: check-symlinks
       - id: check-yaml
+        args: [--strict]
+      - id: check-json
+        args: [--allow-duplicate-keys, "false"]
+      - id: check-toml
       - id: end-of-file-fixer
       - id: mixed-line-ending
+        args: [--fix=lf]
       - id: trailing-whitespace
+      # 安全：禁止私钥文件
+      - id: detect-private-key
+      # 安全：禁止往主分支提交
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master, --branch, production]
+      # 安全：禁止大文件
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      # 安全：禁止提交 .env / 配置文件
+      - id: check-vcs-permalinks
+      # 安全：禁止提交含 DEBUG 代码
+      - id: debug-statements
+  # 安全：最强密钥泄漏扫描
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        args: [--verbose, --strict]
+  # Python 格式化
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
       - id: black
+  # ==============================================
+  # Rust 全套安全增强
+  # ==============================================
   - repo: local
     hooks:
+      # 安全：检测 .env 文件
+      - id: check-env-files
+        name: check env files
+        entry: bash scripts/check-env-files.sh
+        language: system
+        pass_filenames: false
+      # 安全：代码中敏感信息、硬编码密钥扫描
+      - id: talisman
+        name: talisman check
+        entry: bash -c 'talisman --scanWithConfig'
+        language: system
+        pass_filenames: false
+      # Rust 格式化
       - id: cargo-fmt
         name: cargo fmt
-        description: Format files with rustfmt.
-        entry: bash -c 'cargo fmt -- --check'
+        entry: bash -c 'cargo fmt'
         language: system
         files: \.rs$
         pass_filenames: false
+      # 安全：Rust 依赖漏洞审计
+      - id: cargo-audit
+        name: cargo audit
+        entry: bash -c 'cargo audit'
+        language: system
+        files: \.(rs|toml)$
+        pass_filenames: false
+      # 安全：Rust 依赖许可证、不安全依赖、重复依赖检查
       - id: cargo-deny
         name: cargo deny check
-        description: Check cargo dependencies
-        entry: bash -c 'cargo deny check -d'
+        entry: bash -c 'cargo deny check'
         language: system
-        files: \.rs$
+        files: \.(rs|toml)$
         pass_filenames: false
+      # 安全：Rust 依赖过期检查
+      - id: cargo-outdated
+        name: cargo outdated
+        entry: bash -c 'cargo outdated --exit-code 1'
+        language: system
+        files: ^Cargo\.toml$
+        pass_filenames: false
+      # 拼写检查
       - id: typos
         name: typos
-        description: check typo
         entry: bash -c 'typos'
         language: system
-        files: \.*$
         pass_filenames: false
+      # 编译检查
       - id: cargo-check
         name: cargo check
-        description: Check the package for errors.
         entry: bash -c 'cargo check --all'
         language: system
         files: \.rs$
         pass_filenames: false
+      # Clippy 强 lint
       - id: cargo-clippy
         name: cargo clippy
-        description: Lint rust sources
         entry: bash -c 'cargo clippy --all-targets --all-features --tests --benches -- -D warnings'
         language: system
         files: \.rs$
         pass_filenames: false
+      # 测试
       - id: cargo-test
         name: cargo test
-        description: unit test for the project
         entry: bash -c 'cargo nextest run --all-features -- --include-ignored'
         language: system
         files: \.rs$
